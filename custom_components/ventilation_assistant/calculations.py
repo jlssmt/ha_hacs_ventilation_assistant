@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from math import exp
 from statistics import fmean
 
-from .const import Advice, Priority
+from .const import DEFAULT_CO2_TARGET, DEFAULT_MIN_AIRING_MINUTES, Advice, Priority
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,8 @@ class ComfortSettings:
     rh_max: float
     priority: Priority
     co2_max: float = 2000.0
+    co2_target: float = DEFAULT_CO2_TARGET
+    min_airing_minutes: float = DEFAULT_MIN_AIRING_MINUTES
 
 
 @dataclass(frozen=True)
@@ -140,6 +143,99 @@ def ventilation_advices(
             carbon_dioxide_advice,
         ),
     )
+
+
+class TrendTracker:
+    """Rolling samples of one value, collected while a window stays open."""
+
+    def __init__(self, window: float, flat_below: float) -> None:
+        """Initialize an empty tracker."""
+
+        self._window = window
+        self._flat_below = flat_below
+        self._since: float | None = None
+        self._samples: deque[tuple[float, float]] = deque()
+
+    def reset(self) -> None:
+        """Forget all samples, e.g. when the window closes."""
+
+        self._since = None
+        self._samples.clear()
+
+    def add(self, now: float, value: float) -> None:
+        """Record a sample and drop the ones older than the window."""
+
+        if self._since is None:
+            self._since = now
+        self._samples.append((now, value))
+        while self._samples[0][0] < now - self._window:
+            self._samples.popleft()
+
+    def drop(self, now: float) -> float | None:
+        """Return how far the value fell over the window.
+
+        Compares the mean of the first with the mean of the last third of the
+        window to damp sensor noise. None until a full window was observed.
+        """
+
+        if self._since is None or now - self._since < self._window:
+            return None
+        early = [v for t, v in self._samples if t < now - 2 * self._window / 3]
+        late = [v for t, v in self._samples if t >= now - self._window / 3]
+        # Sparse sensors may leave a third empty; fall back to the oldest/newest.
+        return fmean(early or [self._samples[0][1]]) - fmean(
+            late or [self._samples[-1][1]]
+        )
+
+    def is_flat(self, now: float) -> bool:
+        """Return whether the value stopped falling over the window."""
+
+        drop = self.drop(now)
+        return drop is not None and drop < self._flat_below
+
+
+def ventilated_enough(
+    *,
+    settings: ComfortSettings,
+    any_open: bool | None,
+    outdoor_temp: float | None,
+    indoor_co2: float | None,
+    open_seconds: float | None,
+    co2_flat: bool,
+    indoor_rh: float | None,
+    projected_rh: float | None,
+    rh_flat: bool,
+) -> bool | None:
+    """Return whether more ventilation would no longer help.
+
+    Only true once a window was open for the minimum airing time. CO2 is done at
+    the target or once it stops falling, humidity once it is
+    comfortable, cannot be improved by outdoor air, or stops falling. Summer
+    (outdoor at or above the comfort temperature minimum) never reports done:
+    windows stay open then.
+    """
+
+    if any_open is None:
+        return None
+    if (
+        not any_open
+        or open_seconds is None
+        or open_seconds < settings.min_airing_minutes * 60
+    ):
+        return False
+    if outdoor_temp is not None and outdoor_temp >= settings.temp_min:
+        return False
+
+    done: list[bool] = []
+    if indoor_co2 is not None:
+        done.append(indoor_co2 <= settings.co2_target or co2_flat)
+    if indoor_rh is not None and projected_rh is not None:
+        helps = (
+            _humidity_advice(settings, None, None, indoor_rh, projected_rh)
+            == Advice.OPEN
+        )
+        done.append(not helps or rh_flat)
+    return all(done) if done else None
 
 
 def _apply_contact_state(advice: Advice | None, any_open: bool) -> Advice | None:

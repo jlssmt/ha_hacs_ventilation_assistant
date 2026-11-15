@@ -18,6 +18,8 @@
           "comfort_rh_min": "Minimale Komfort-Luftfeuchtigkeit innen",
           "comfort_rh_max": "Maximale Komfort-Luftfeuchtigkeit innen",
           "comfort_co2_max": "Komfort CO₂ Maximum innen",
+          "co2_target": "CO₂-Zielwert innen",
+          "min_airing_minutes": "Mindest-Lüftungszeit",
           "priority": "Priorität"
         }
       },
@@ -37,6 +39,8 @@
           "comfort_rh_min": "Überschreibung der minimalen Komfort-Luftfeuchtigkeit innen",
           "comfort_rh_max": "Überschreibung der maximalen Komfort-Luftfeuchtigkeit innen",
           "comfort_co2_max": "Überschreibung des Komfort CO₂ Maximums innen",
+          "co2_target": "Überschreibung des CO₂-Zielwerts innen",
+          "min_airing_minutes": "Überschreibung der Mindest-Lüftungszeit",
           "priority": "Priorität überschreiben"
         }
       }
@@ -68,6 +72,8 @@
             "comfort_rh_min": "Überschreibung der minimalen Komfort-Luftfeuchtigkeit innen",
             "comfort_rh_max": "Überschreibung der maximalen Komfort-Luftfeuchtigkeit innen",
             "comfort_co2_max": "Überschreibung des Komfort CO₂ Maximums innen",
+            "co2_target": "Überschreibung des CO₂-Zielwerts innen",
+            "min_airing_minutes": "Überschreibung der Mindest-Lüftungszeit",
             "priority": "Priorität überschreiben"
           }
         },
@@ -86,6 +92,8 @@
             "comfort_rh_min": "Überschreibung der minimalen Komfort-Luftfeuchtigkeit innen",
             "comfort_rh_max": "Überschreibung der maximalen Komfort-Luftfeuchtigkeit innen",
             "comfort_co2_max": "Überschreibung des Komfort CO₂ Maximums innen",
+            "co2_target": "Überschreibung des CO₂-Zielwerts innen",
+            "min_airing_minutes": "Überschreibung der Mindest-Lüftungszeit",
             "priority": "Priorität überschreiben"
           }
         }
@@ -111,6 +119,8 @@
           "comfort_rh_min": "Minimale Komfort-Luftfeuchtigkeit innen",
           "comfort_rh_max": "Maximale Komfort-Luftfeuchtigkeit innen",
           "comfort_co2_max": "Komfort CO₂ Maximum innen",
+          "co2_target": "CO₂-Zielwert innen",
+          "min_airing_minutes": "Mindest-Lüftungszeit",
           "priority": "Priorität"
         }
       }
@@ -212,6 +222,9 @@
     "binary_sensor": {
       "any_door_window_open": {
         "name": "Türen/Fenster offen"
+      },
+      "ventilated_enough": {
+        "name": "Ausreichend gelüftet"
       }
     },
     "number": {
@@ -229,6 +242,12 @@
       },
       "comfort_co2_max": {
         "name": "Komfort CO₂ Maximum innen"
+      },
+      "co2_target": {
+        "name": "CO₂-Zielwert innen"
+      },
+      "min_airing_minutes": {
+        "name": "Mindest-Lüftungszeit"
       }
     },
     "select": {

@@ -34,11 +34,22 @@ Each ventilation device creates a Home Assistant device containing:
 - Doors/Windows:
     - Any doors/windows open
     - Door/window open percentage
+- Ventilated enough: on while a window is open and more ventilation would no longer help
 - Advice:
     - Temperature advice: `KEEP_CLOSED`, `OPEN`, `KEEP_OPEN`, or `CLOSE`
     - Humidity advice: `KEEP_CLOSED`, `OPEN`, `KEEP_OPEN`, or `CLOSE`
     - Carbon dioxide advice: `KEEP_CLOSED`, `OPEN`, `KEEP_OPEN`, or `CLOSE`
     - Advice: `KEEP_CLOSED`, `OPEN`, `KEEP_OPEN`, or `CLOSE`
+
+## Ventilated enough
+
+The `Ventilated enough` binary sensor turns on while a door/window is open and airing no longer improves the room. Use it to announce "close the window" instead of reacting to the advice, which flips as soon as a comfort limit is crossed.
+
+- Carbon dioxide counts as done at the CO2 target (default 500 ppm, global setting with per-device override and a number entity), or once it fell by less than 10 ppm over the last 30 seconds.
+- Humidity counts as done when it is within the comfort band, when outdoor air cannot improve it, or once it fell by less than 1 % over the last minute.
+- Nothing counts as done before the window was open for the minimum airing time (default 5 minutes, because sensors lag behind the airing). Configure it globally, override it per device, or change it with the `Minimum airing time` number entity.
+- It is on when every available component is done. A room with only one of the two inputs uses that one.
+- It never turns on when the outdoor temperature is at or above the comfort temperature minimum, because windows are open for long periods then.
 
 ## Availability
 

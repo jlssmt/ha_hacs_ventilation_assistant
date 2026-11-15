@@ -175,6 +175,39 @@ def _global_outdoor_coordinator(integration: Any, const: Any, hass: Any) -> Any:
 
 
 class GlobalOutdoorTests(unittest.TestCase):
+    def test_trend_samples_only_the_input_that_changed(self) -> None:
+        integration, _ = _load_integration_modules()
+        const = _const_module()
+        hass = types.SimpleNamespace(
+            data={const.DOMAIN: {}},
+            states=_States(
+                {
+                    "sensor.co2": _State("640", "ppm"),
+                    "sensor.rh": _State("45", "%"),
+                    "binary_sensor.window": _State("on"),
+                }
+            ),
+        )
+        coordinator = integration.VentilationCoordinator(
+            hass,
+            integration.VentilationDeviceConfig(
+                id="room",
+                name="Room",
+                options={
+                    const.CONF_INDOOR_CO2_ENTITIES: ["sensor.co2"],
+                    const.CONF_INDOOR_HUMIDITY_ENTITIES: ["sensor.rh"],
+                    const.CONF_DOOR_WINDOW_ENTITIES: ["binary_sensor.window"],
+                },
+            ),
+        )
+
+        coordinator._async_input_changed(
+            types.SimpleNamespace(data={"entity_id": "sensor.rh"})
+        )
+
+        self.assertEqual(len(coordinator._rh_trend._samples), 1)
+        self.assertEqual(len(coordinator._co2_trend._samples), 0)
+
     def test_global_coordinator_does_not_subscribe_to_itself(self) -> None:
         integration, _ = _load_integration_modules()
         const = _const_module()

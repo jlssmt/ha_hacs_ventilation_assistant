@@ -27,6 +27,7 @@ from . import (
     device_coordinators_for_entry,
 )
 from .const import (
+    CONF_CO2_TARGET,
     CONF_COMFORT_CO2_MAX,
     CONF_COMFORT_RH_MAX,
     CONF_COMFORT_RH_MIN,
@@ -34,6 +35,7 @@ from .const import (
     CONF_COMFORT_TEMP_MIN,
     CONF_GLOBAL,
     CONF_KIND,
+    CONF_MIN_AIRING_MINUTES,
     DOMAIN,
 )
 
@@ -94,6 +96,26 @@ NUMBER_DESCRIPTIONS = (
         native_max_value=10000,
         native_step=1,
         native_unit_of_measurement="ppm",
+        mode=NumberMode.BOX,
+    ),
+    VentilationNumberEntityDescription(
+        key="co2_target",
+        translation_key="co2_target",
+        option_key=CONF_CO2_TARGET,
+        native_min_value=1,
+        native_max_value=10000,
+        native_step=1,
+        native_unit_of_measurement="ppm",
+        mode=NumberMode.BOX,
+    ),
+    VentilationNumberEntityDescription(
+        key="min_airing_minutes",
+        translation_key="min_airing_minutes",
+        option_key=CONF_MIN_AIRING_MINUTES,
+        native_min_value=0,
+        native_max_value=60,
+        native_step=1,
+        native_unit_of_measurement="min",
         mode=NumberMode.BOX,
     ),
 )
@@ -171,6 +193,8 @@ class VentilationNumber(NumberEntity):
             CONF_COMFORT_RH_MIN: settings.rh_min,
             CONF_COMFORT_RH_MAX: settings.rh_max,
             CONF_COMFORT_CO2_MAX: settings.co2_max,
+            CONF_CO2_TARGET: settings.co2_target,
+            CONF_MIN_AIRING_MINUTES: settings.min_airing_minutes,
         }
         return values[self.entity_description.option_key]
 

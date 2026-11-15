@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 from .const import (
+    CONF_CO2_TARGET,
     CONF_COMFORT_CO2_MAX,
     CONF_COMFORT_RH_MAX,
     CONF_COMFORT_RH_MIN,
@@ -26,15 +27,18 @@ from .const import (
     CONF_INDOOR_HUMIDITY_ENTITIES,
     CONF_INDOOR_TEMP_ENTITIES,
     CONF_KIND,
+    CONF_MIN_AIRING_MINUTES,
     CONF_OUTDOOR_CO2_ENTITIES,
     CONF_OUTDOOR_HUMIDITY_ENTITIES,
     CONF_OUTDOOR_TEMP_ENTITIES,
     CONF_PRIORITY,
+    DEFAULT_CO2_TARGET,
     DEFAULT_COMFORT_CO2_MAX,
     DEFAULT_COMFORT_RH_MAX,
     DEFAULT_COMFORT_RH_MIN,
     DEFAULT_COMFORT_TEMP_MAX,
     DEFAULT_COMFORT_TEMP_MIN,
+    DEFAULT_MIN_AIRING_MINUTES,
     DOMAIN,
     Priority,
 )
@@ -228,6 +232,16 @@ def _global_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:
                 default=defaults.get(CONF_COMFORT_CO2_MAX, DEFAULT_COMFORT_CO2_MAX),
             ): _co2_number_selector(),
             vol.Required(
+                CONF_CO2_TARGET,
+                default=defaults.get(CONF_CO2_TARGET, DEFAULT_CO2_TARGET),
+            ): _co2_number_selector(),
+            vol.Required(
+                CONF_MIN_AIRING_MINUTES,
+                default=defaults.get(
+                    CONF_MIN_AIRING_MINUTES, DEFAULT_MIN_AIRING_MINUTES
+                ),
+            ): _minutes_number_selector(),
+            vol.Required(
                 CONF_PRIORITY,
                 default=defaults.get(CONF_PRIORITY, Priority.TEMPERATURE.value),
             ): selector.SelectSelector(
@@ -289,6 +303,10 @@ def _device_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:
                 _humidity_number_selector()
             ),
             _optional_number(CONF_COMFORT_CO2_MAX, defaults): _co2_number_selector(),
+            _optional_number(CONF_CO2_TARGET, defaults): _co2_number_selector(),
+            _optional_number(CONF_MIN_AIRING_MINUTES, defaults): (
+                _minutes_number_selector()
+            ),
             vol.Optional(
                 CONF_PRIORITY, default=defaults.get(CONF_PRIORITY, "")
             ): selector.SelectSelector(
@@ -354,6 +372,18 @@ def _humidity_number_selector() -> selector.NumberSelector:
     )
 
 
+def _minutes_number_selector() -> selector.NumberSelector:
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=0,
+            max=60,
+            step=1,
+            mode=selector.NumberSelectorMode.BOX,
+            unit_of_measurement="min",
+        )
+    )
+
+
 def _co2_number_selector() -> selector.NumberSelector:
     return selector.NumberSelector(
         selector.NumberSelectorConfig(
@@ -382,6 +412,10 @@ def _global_options(user_input: Mapping[str, Any]) -> dict[str, Any]:
         CONF_COMFORT_RH_MIN: user_input[CONF_COMFORT_RH_MIN],
         CONF_COMFORT_RH_MAX: user_input[CONF_COMFORT_RH_MAX],
         CONF_COMFORT_CO2_MAX: user_input[CONF_COMFORT_CO2_MAX],
+        CONF_CO2_TARGET: user_input.get(CONF_CO2_TARGET, DEFAULT_CO2_TARGET),
+        CONF_MIN_AIRING_MINUTES: user_input.get(
+            CONF_MIN_AIRING_MINUTES, DEFAULT_MIN_AIRING_MINUTES
+        ),
         CONF_PRIORITY: user_input[CONF_PRIORITY],
     }
 
@@ -415,6 +449,8 @@ def _device_options(user_input: Mapping[str, Any]) -> dict[str, Any]:
         CONF_COMFORT_RH_MIN,
         CONF_COMFORT_RH_MAX,
         CONF_COMFORT_CO2_MAX,
+        CONF_CO2_TARGET,
+        CONF_MIN_AIRING_MINUTES,
         CONF_PRIORITY,
     ):
         value = user_input.get(key)

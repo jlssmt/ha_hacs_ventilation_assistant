@@ -18,6 +18,8 @@
           "comfort_rh_min": "Indoor comfort humidity minimum",
           "comfort_rh_max": "Indoor comfort humidity maximum",
           "comfort_co2_max": "Indoor comfort carbon dioxide maximum",
+          "co2_target": "Indoor carbon dioxide target",
+          "min_airing_minutes": "Minimum airing time",
           "priority": "Priority"
         }
       },
@@ -37,6 +39,8 @@
           "comfort_rh_min": "Indoor comfort humidity minimum override",
           "comfort_rh_max": "Indoor comfort humidity maximum override",
           "comfort_co2_max": "Indoor comfort carbon dioxide maximum override",
+          "co2_target": "Indoor carbon dioxide target override",
+          "min_airing_minutes": "Minimum airing time override",
           "priority": "Priority override"
         }
       }
@@ -68,6 +72,8 @@
             "comfort_rh_min": "Indoor comfort humidity minimum override",
             "comfort_rh_max": "Indoor comfort humidity maximum override",
             "comfort_co2_max": "Indoor comfort carbon dioxide maximum override",
+            "co2_target": "Indoor carbon dioxide target override",
+            "min_airing_minutes": "Minimum airing time override",
             "priority": "Priority override"
           }
         },
@@ -86,6 +92,8 @@
             "comfort_rh_min": "Indoor comfort humidity minimum override",
             "comfort_rh_max": "Indoor comfort humidity maximum override",
             "comfort_co2_max": "Indoor comfort carbon dioxide maximum override",
+            "co2_target": "Indoor carbon dioxide target override",
+            "min_airing_minutes": "Minimum airing time override",
             "priority": "Priority override"
           }
         }
@@ -111,6 +119,8 @@
           "comfort_rh_min": "Indoor comfort humidity minimum",
           "comfort_rh_max": "Indoor comfort humidity maximum",
           "comfort_co2_max": "Indoor comfort carbon dioxide maximum",
+          "co2_target": "Indoor carbon dioxide target",
+          "min_airing_minutes": "Minimum airing time",
           "priority": "Priority"
         }
       }
@@ -212,6 +222,9 @@
     "binary_sensor": {
       "any_door_window_open": {
         "name": "Any doors/windows open"
+      },
+      "ventilated_enough": {
+        "name": "Ventilated enough"
       }
     },
     "number": {
@@ -229,6 +242,12 @@
       },
       "comfort_co2_max": {
         "name": "Indoor comfort carbon dioxide maximum"
+      },
+      "co2_target": {
+        "name": "Indoor carbon dioxide target"
+      },
+      "min_airing_minutes": {
+        "name": "Minimum airing time"
       }
     },
     "select": {
