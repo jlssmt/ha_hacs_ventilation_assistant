@@ -17,7 +17,6 @@
           "comfort_temp_max": "Indoor comfort temperature maximum",
           "comfort_rh_min": "Indoor comfort humidity minimum",
           "comfort_rh_max": "Indoor comfort humidity maximum",
-          "comfort_co2_min": "Indoor comfort carbon dioxide minimum",
           "comfort_co2_max": "Indoor comfort carbon dioxide maximum",
           "priority": "Priority"
         }
@@ -37,7 +36,6 @@
           "comfort_temp_max": "Indoor comfort temperature maximum override",
           "comfort_rh_min": "Indoor comfort humidity minimum override",
           "comfort_rh_max": "Indoor comfort humidity maximum override",
-          "comfort_co2_min": "Indoor comfort carbon dioxide minimum override",
           "comfort_co2_max": "Indoor comfort carbon dioxide maximum override",
           "priority": "Priority override"
         }
@@ -45,9 +43,6 @@
     },
     "abort": {
       "already_configured": "This entry already exists."
-    },
-    "error": {
-      "invalid_co2_range": "The carbon dioxide comfort minimum must be less than the maximum."
     }
   },
   "config_subentries": {
@@ -72,7 +67,6 @@
             "comfort_temp_max": "Indoor comfort temperature maximum override",
             "comfort_rh_min": "Indoor comfort humidity minimum override",
             "comfort_rh_max": "Indoor comfort humidity maximum override",
-            "comfort_co2_min": "Indoor comfort carbon dioxide minimum override",
             "comfort_co2_max": "Indoor comfort carbon dioxide maximum override",
             "priority": "Priority override"
           }
@@ -91,7 +85,6 @@
             "comfort_temp_max": "Indoor comfort temperature maximum override",
             "comfort_rh_min": "Indoor comfort humidity minimum override",
             "comfort_rh_max": "Indoor comfort humidity maximum override",
-            "comfort_co2_min": "Indoor comfort carbon dioxide minimum override",
             "comfort_co2_max": "Indoor comfort carbon dioxide maximum override",
             "priority": "Priority override"
           }
@@ -99,9 +92,6 @@
       },
       "abort": {
         "already_configured": "This ventilation device already exists."
-      },
-      "error": {
-        "invalid_co2_range": "The carbon dioxide comfort minimum must be less than the maximum."
       }
     }
   },
@@ -120,14 +110,10 @@
           "comfort_temp_max": "Indoor comfort temperature maximum",
           "comfort_rh_min": "Indoor comfort humidity minimum",
           "comfort_rh_max": "Indoor comfort humidity maximum",
-          "comfort_co2_min": "Indoor comfort carbon dioxide minimum",
           "comfort_co2_max": "Indoor comfort carbon dioxide maximum",
           "priority": "Priority"
         }
       }
-    },
-    "error": {
-      "invalid_co2_range": "The carbon dioxide comfort minimum must be less than the maximum."
     }
   },
   "entity": {
@@ -240,9 +226,6 @@
       },
       "comfort_rh_max": {
         "name": "Indoor comfort humidity maximum"
-      },
-      "comfort_co2_min": {
-        "name": "Indoor comfort carbon dioxide minimum"
       },
       "comfort_co2_max": {
         "name": "Indoor comfort carbon dioxide maximum"

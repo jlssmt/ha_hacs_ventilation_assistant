@@ -33,7 +33,6 @@ from .calculations import (
 )
 from .const import (
     CONF_COMFORT_CO2_MAX,
-    CONF_COMFORT_CO2_MIN,
     CONF_COMFORT_RH_MAX,
     CONF_COMFORT_RH_MIN,
     CONF_COMFORT_TEMP_MAX,
@@ -51,7 +50,6 @@ from .const import (
     CONF_PRIORITY,
     DATA_GLOBAL_OPTIONS,
     DEFAULT_COMFORT_CO2_MAX,
-    DEFAULT_COMFORT_CO2_MIN,
     DEFAULT_COMFORT_RH_MAX,
     DEFAULT_COMFORT_RH_MIN,
     DEFAULT_COMFORT_TEMP_MAX,
@@ -517,12 +515,6 @@ class VentilationCoordinator:
                     global_options.get(CONF_PRIORITY, Priority.TEMPERATURE),
                 )
             ),
-            co2_min=float(
-                options.get(
-                    CONF_COMFORT_CO2_MIN,
-                    global_options.get(CONF_COMFORT_CO2_MIN, DEFAULT_COMFORT_CO2_MIN),
-                )
-            ),
             co2_max=float(
                 options.get(
                     CONF_COMFORT_CO2_MAX,
@@ -752,7 +744,6 @@ def default_global_options() -> dict[str, Any]:
         CONF_COMFORT_TEMP_MAX: DEFAULT_COMFORT_TEMP_MAX,
         CONF_COMFORT_RH_MIN: DEFAULT_COMFORT_RH_MIN,
         CONF_COMFORT_RH_MAX: DEFAULT_COMFORT_RH_MAX,
-        CONF_COMFORT_CO2_MIN: DEFAULT_COMFORT_CO2_MIN,
         CONF_COMFORT_CO2_MAX: DEFAULT_COMFORT_CO2_MAX,
         CONF_PRIORITY: Priority.TEMPERATURE.value,
     }

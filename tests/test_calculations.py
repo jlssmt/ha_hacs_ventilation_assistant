@@ -71,9 +71,7 @@ class CalculationTests(unittest.TestCase):
         self,
     ) -> None:
         advices = ventilation_advices(
-            settings=ComfortSettings(
-                19, 24, 40, 60, Priority.CO2, co2_min=400, co2_max=2000
-            ),
+            settings=ComfortSettings(19, 24, 40, 60, Priority.CO2, co2_max=2000),
             any_open=None,
             indoor_temp=22,
             outdoor_temp=18,
@@ -88,9 +86,7 @@ class CalculationTests(unittest.TestCase):
 
     def test_carbon_dioxide_advice_applies_contact_state(self) -> None:
         advices = ventilation_advices(
-            settings=ComfortSettings(
-                19, 24, 40, 60, Priority.CO2, co2_min=400, co2_max=2000
-            ),
+            settings=ComfortSettings(19, 24, 40, 60, Priority.CO2, co2_max=2000),
             any_open=True,
             indoor_temp=None,
             outdoor_temp=None,

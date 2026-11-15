@@ -18,7 +18,6 @@ class ComfortSettings:
     rh_min: float
     rh_max: float
     priority: Priority
-    co2_min: float = 400.0
     co2_max: float = 2000.0
 
 
@@ -221,7 +220,5 @@ def _carbon_dioxide_advice(
     if indoor_co2 is None or outdoor_co2 is None:
         return None
     if indoor_co2 > settings.co2_max and outdoor_co2 < indoor_co2:
-        return Advice.OPEN
-    if indoor_co2 < settings.co2_min and outdoor_co2 > indoor_co2:
         return Advice.OPEN
     return Advice.CLOSE

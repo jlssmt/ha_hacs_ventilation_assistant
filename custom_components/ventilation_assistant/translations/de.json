@@ -17,7 +17,6 @@
           "comfort_temp_max": "Maximale Komfort-Innentemperatur",
           "comfort_rh_min": "Minimale Komfort-Luftfeuchtigkeit innen",
           "comfort_rh_max": "Maximale Komfort-Luftfeuchtigkeit innen",
-          "comfort_co2_min": "Komfort CO₂ Minimum innen",
           "comfort_co2_max": "Komfort CO₂ Maximum innen",
           "priority": "Priorität"
         }
@@ -37,7 +36,6 @@
           "comfort_temp_max": "Überschreibung der maximalen Komfort-Innentemperatur",
           "comfort_rh_min": "Überschreibung der minimalen Komfort-Luftfeuchtigkeit innen",
           "comfort_rh_max": "Überschreibung der maximalen Komfort-Luftfeuchtigkeit innen",
-          "comfort_co2_min": "Überschreibung des Komfort CO₂ Minimums innen",
           "comfort_co2_max": "Überschreibung des Komfort CO₂ Maximums innen",
           "priority": "Priorität überschreiben"
         }
@@ -45,9 +43,6 @@
     },
     "abort": {
       "already_configured": "Dieser Eintrag ist bereits vorhanden."
-    },
-    "error": {
-      "invalid_co2_range": "Das Komfort CO₂ Minimum muss kleiner als das Maximum sein."
     }
   },
   "config_subentries": {
@@ -72,7 +67,6 @@
             "comfort_temp_max": "Überschreibung der maximalen Komfort-Innentemperatur",
             "comfort_rh_min": "Überschreibung der minimalen Komfort-Luftfeuchtigkeit innen",
             "comfort_rh_max": "Überschreibung der maximalen Komfort-Luftfeuchtigkeit innen",
-            "comfort_co2_min": "Überschreibung des Komfort CO₂ Minimums innen",
             "comfort_co2_max": "Überschreibung des Komfort CO₂ Maximums innen",
             "priority": "Priorität überschreiben"
           }
@@ -91,7 +85,6 @@
             "comfort_temp_max": "Überschreibung der maximalen Komfort-Innentemperatur",
             "comfort_rh_min": "Überschreibung der minimalen Komfort-Luftfeuchtigkeit innen",
             "comfort_rh_max": "Überschreibung der maximalen Komfort-Luftfeuchtigkeit innen",
-            "comfort_co2_min": "Überschreibung des Komfort CO₂ Minimums innen",
             "comfort_co2_max": "Überschreibung des Komfort CO₂ Maximums innen",
             "priority": "Priorität überschreiben"
           }
@@ -99,9 +92,6 @@
       },
       "abort": {
         "already_configured": "Dieser Lüftungsbereich ist bereits vorhanden."
-      },
-      "error": {
-        "invalid_co2_range": "Das Komfort CO₂ Minimum muss kleiner als das Maximum sein."
       }
     }
   },
@@ -120,14 +110,10 @@
           "comfort_temp_max": "Maximale Komfort-Innentemperatur",
           "comfort_rh_min": "Minimale Komfort-Luftfeuchtigkeit innen",
           "comfort_rh_max": "Maximale Komfort-Luftfeuchtigkeit innen",
-          "comfort_co2_min": "Komfort CO₂ Minimum innen",
           "comfort_co2_max": "Komfort CO₂ Maximum innen",
           "priority": "Priorität"
         }
       }
-    },
-    "error": {
-      "invalid_co2_range": "Das Komfort CO₂ Minimum muss kleiner als das Maximum sein."
     }
   },
   "entity": {
@@ -240,9 +226,6 @@
       },
       "comfort_rh_max": {
         "name": "Maximale Komfort-Luftfeuchtigkeit innen"
-      },
-      "comfort_co2_min": {
-        "name": "Komfort CO₂ Minimum innen"
       },
       "comfort_co2_max": {
         "name": "Komfort CO₂ Maximum innen"
