@@ -31,7 +31,13 @@ async def async_setup_entry(
             if entry.data[CONF_KIND] == CONF_GLOBAL
             else {}
         )
-        async_add_entities([AnyDoorWindowOpenBinarySensor(coordinator)], **kwargs)
+        async_add_entities(
+            [
+                AnyDoorWindowOpenBinarySensor(coordinator),
+                VentilatedEnoughBinarySensor(coordinator),
+            ],
+            **kwargs,
+        )
 
 
 class AnyDoorWindowOpenBinarySensor(BinarySensorEntity):
@@ -76,3 +82,28 @@ class AnyDoorWindowOpenBinarySensor(BinarySensorEntity):
         """Return whether any configured contact is open."""
 
         return self.coordinator.snapshot().any_open
+
+
+class VentilatedEnoughBinarySensor(AnyDoorWindowOpenBinarySensor):
+    """Whether further ventilation would no longer help."""
+
+    _attr_translation_key = "ventilated_enough"
+    _attr_device_class = None
+
+    def __init__(self, coordinator: VentilationCoordinator) -> None:
+        """Initialize the binary sensor."""
+
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.device_id}_ventilated_enough"
+
+    @property
+    def available(self) -> bool:
+        """Return whether a window contact and indoor values are available."""
+
+        return self.coordinator.snapshot().ventilated_enough is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return whether the room is ventilated enough."""
+
+        return self.coordinator.snapshot().ventilated_enough

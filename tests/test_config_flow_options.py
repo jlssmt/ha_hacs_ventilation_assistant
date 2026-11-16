@@ -157,7 +157,6 @@ class ConfigFlowOptionsTests(unittest.TestCase):
             const.CONF_COMFORT_TEMP_MAX,
             const.CONF_COMFORT_RH_MIN,
             const.CONF_COMFORT_RH_MAX,
-            const.CONF_COMFORT_CO2_MIN,
             const.CONF_COMFORT_CO2_MAX,
         ):
             self.assertIsInstance(schema[key], selector.NumberSelector)
@@ -183,7 +182,7 @@ class ConfigFlowOptionsTests(unittest.TestCase):
             },
         )
         self.assertEqual(
-            schema[const.CONF_COMFORT_CO2_MIN].config.kwargs,
+            schema[const.CONF_COMFORT_CO2_MAX].config.kwargs,
             {
                 "min": 1,
                 "max": 10000,
@@ -191,27 +190,6 @@ class ConfigFlowOptionsTests(unittest.TestCase):
                 "mode": selector.NumberSelectorMode.BOX,
                 "unit_of_measurement": "ppm",
             },
-        )
-
-    def test_co2_comfort_bounds_require_minimum_below_maximum(self) -> None:
-        config_flow = _load_config_flow_module()
-        const = importlib.import_module("custom_components.ventilation_assistant.const")
-
-        self.assertTrue(
-            config_flow._co2_bounds_valid(
-                {
-                    const.CONF_COMFORT_CO2_MIN: 400,
-                    const.CONF_COMFORT_CO2_MAX: 2000,
-                }
-            )
-        )
-        self.assertFalse(
-            config_flow._co2_bounds_valid(
-                {
-                    const.CONF_COMFORT_CO2_MIN: 2000,
-                    const.CONF_COMFORT_CO2_MAX: 2000,
-                }
-            )
         )
 
     def test_co2_entity_selectors_only_allow_carbon_dioxide_sensors(self) -> None:

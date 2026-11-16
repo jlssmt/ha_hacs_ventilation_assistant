@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -14,7 +16,10 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_time_interval,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -24,16 +29,18 @@ if TYPE_CHECKING:
 
 from .calculations import (
     ComfortSettings,
+    TrendTracker,
     absolute_humidity,
     average,
     difference,
     open_ratio,
     relative_humidity,
+    ventilated_enough,
     ventilation_advices,
 )
 from .const import (
+    CONF_CO2_TARGET,
     CONF_COMFORT_CO2_MAX,
-    CONF_COMFORT_CO2_MIN,
     CONF_COMFORT_RH_MAX,
     CONF_COMFORT_RH_MIN,
     CONF_COMFORT_TEMP_MAX,
@@ -45,21 +52,27 @@ from .const import (
     CONF_INDOOR_HUMIDITY_ENTITIES,
     CONF_INDOOR_TEMP_ENTITIES,
     CONF_KIND,
+    CONF_MAX_EXTRA_AIRING_MINUTES,
+    CONF_MIN_AIRING_MINUTES,
     CONF_OUTDOOR_CO2_ENTITIES,
     CONF_OUTDOOR_HUMIDITY_ENTITIES,
     CONF_OUTDOOR_TEMP_ENTITIES,
     CONF_PRIORITY,
     DATA_GLOBAL_OPTIONS,
+    DEFAULT_CO2_TARGET,
     DEFAULT_COMFORT_CO2_MAX,
-    DEFAULT_COMFORT_CO2_MIN,
     DEFAULT_COMFORT_RH_MAX,
     DEFAULT_COMFORT_RH_MIN,
     DEFAULT_COMFORT_TEMP_MAX,
     DEFAULT_COMFORT_TEMP_MIN,
+    DEFAULT_MAX_EXTRA_AIRING_MINUTES,
+    DEFAULT_MIN_AIRING_MINUTES,
     DEFAULT_OUTDOOR_CO2,
     DOMAIN,
+    ENOUGH_CONFIRMATIONS,
     GLOBAL_OUTDOOR_DEVICE_ID,
     PLATFORMS,
+    TREND_SAMPLE_SECONDS,
     Priority,
 )
 
@@ -271,6 +284,8 @@ class VentilationSnapshot:
     humidity_advice: str | None
     carbon_dioxide_advice: str | None
     advice: str | None
+    ventilated_enough: bool | None = None
+    ventilated_enough_now: bool | None = None
 
 
 class VentilationCoordinator:
@@ -292,6 +307,12 @@ class VentilationCoordinator:
         self._listeners: list[Callable[[], None]] = []
         self._remove_state_listener: Callable[[], None] | None = None
         self._remove_global_listener: Callable[[], None] | None = None
+        self._co2_trend = TrendTracker()
+        self._rh_trend = TrendTracker()
+        self._opened_at: float | None = None
+        self._enough_streak = 0
+        self._enough_confirmed = False
+        self._remove_trend_timer: Callable[[], None] | None = None
 
     @classmethod
     def from_entry(
@@ -350,6 +371,7 @@ class VentilationCoordinator:
         if self._remove_global_listener is not None:
             self._remove_global_listener()
             self._remove_global_listener = None
+        self._async_stop_airing()
 
     @property
     def input_entity_ids(self) -> set[str]:
@@ -396,7 +418,73 @@ class VentilationCoordinator:
     def _async_input_changed(self, event: Any) -> None:
         """Notify entities that one of the inputs changed."""
 
+        self._async_update_airing()
         self._async_notify_listeners()
+
+    @callback
+    def _async_update_airing(self) -> None:
+        """Start or stop trend sampling when a window opens or closes."""
+
+        any_open, _, _ = self._open_counts()
+        if not any_open:
+            self._async_stop_airing()
+            return
+
+        if self._opened_at is None:
+            self._opened_at = time.monotonic()
+            self._remove_trend_timer = async_track_time_interval(
+                self.hass,
+                self._async_trend_tick,
+                timedelta(seconds=TREND_SAMPLE_SECONDS),
+            )
+            self._async_sample_trends()
+        if self.snapshot().ventilated_enough_now is not True:
+            self._enough_streak = 0
+            self._enough_confirmed = False
+
+    @callback
+    def _async_stop_airing(self) -> None:
+        """Forget the trend and stop sampling, e.g. when the window closes."""
+
+        if self._remove_trend_timer is not None:
+            self._remove_trend_timer()
+            self._remove_trend_timer = None
+        self._co2_trend.reset()
+        self._rh_trend.reset()
+        self._opened_at = None
+        self._enough_streak = 0
+        self._enough_confirmed = False
+
+    @callback
+    def _async_trend_tick(self, _now: Any) -> None:
+        """Sample the indoor values and count consecutive "enough" checks.
+
+        Sampling on a timer keeps the last value of a sensor that reports
+        nothing new, instead of leaving gaps that distort the slope.
+        """
+
+        self._async_sample_trends()
+        if self.snapshot().ventilated_enough_now is True:
+            self._enough_streak += 1
+            if self._enough_streak >= ENOUGH_CONFIRMATIONS:
+                self._enough_confirmed = True
+        else:
+            self._enough_streak = 0
+            self._enough_confirmed = False
+        self._async_notify_listeners()
+
+    def _async_sample_trends(self) -> None:
+        """Record the current indoor CO2 and humidity."""
+
+        now = time.monotonic()
+        indoor_co2 = _co2_average(self._numeric_states(CONF_INDOOR_CO2_ENTITIES, "ppm"))
+        if indoor_co2 is not None:
+            self._co2_trend.add(now, indoor_co2)
+        indoor_rh = average(
+            self._numeric_states(CONF_INDOOR_HUMIDITY_ENTITIES, PERCENTAGE)
+        )
+        if indoor_rh is not None:
+            self._rh_trend.add(now, indoor_rh)
 
     @callback
     def async_update_options(self, options: dict[str, Any]) -> None:
@@ -447,6 +535,28 @@ class VentilationCoordinator:
             indoor_co2=indoor_co2,
             outdoor_co2=outdoor_co2,
         )
+        now = time.monotonic()
+        enough_now = ventilated_enough(
+            settings=settings,
+            any_open=any_open,
+            outdoor_temp=outdoor_temp,
+            indoor_co2=indoor_co2,
+            open_seconds=(
+                now - self._opened_at if self._opened_at is not None else None
+            ),
+            co2_slope=self._co2_trend.slope_per_minute(now),
+            indoor_rh=indoor_rh,
+            projected_rh=projected_rh,
+            rh_slope=self._rh_trend.slope_per_minute(now),
+            keep_done=self._enough_confirmed,
+        )
+        # Turning on takes several consecutive checks. Once on, it stays on until
+        # the value climbs again (or the window closes).
+        enough = (
+            self._enough_confirmed or self._enough_streak >= ENOUGH_CONFIRMATIONS
+            if enough_now
+            else enough_now
+        )
 
         return VentilationSnapshot(
             indoor_temp=indoor_temp,
@@ -478,6 +588,8 @@ class VentilationCoordinator:
                 else None
             ),
             advice=advices.overall.value if advices.overall is not None else None,
+            ventilated_enough=enough,
+            ventilated_enough_now=enough_now,
         )
 
     @property
@@ -517,16 +629,33 @@ class VentilationCoordinator:
                     global_options.get(CONF_PRIORITY, Priority.TEMPERATURE),
                 )
             ),
-            co2_min=float(
-                options.get(
-                    CONF_COMFORT_CO2_MIN,
-                    global_options.get(CONF_COMFORT_CO2_MIN, DEFAULT_COMFORT_CO2_MIN),
-                )
-            ),
             co2_max=float(
                 options.get(
                     CONF_COMFORT_CO2_MAX,
                     global_options.get(CONF_COMFORT_CO2_MAX, DEFAULT_COMFORT_CO2_MAX),
+                )
+            ),
+            co2_target=float(
+                options.get(
+                    CONF_CO2_TARGET,
+                    global_options.get(CONF_CO2_TARGET, DEFAULT_CO2_TARGET),
+                )
+            ),
+            min_airing_minutes=float(
+                options.get(
+                    CONF_MIN_AIRING_MINUTES,
+                    global_options.get(
+                        CONF_MIN_AIRING_MINUTES, DEFAULT_MIN_AIRING_MINUTES
+                    ),
+                )
+            ),
+            max_extra_airing_minutes=float(
+                options.get(
+                    CONF_MAX_EXTRA_AIRING_MINUTES,
+                    global_options.get(
+                        CONF_MAX_EXTRA_AIRING_MINUTES,
+                        DEFAULT_MAX_EXTRA_AIRING_MINUTES,
+                    ),
                 )
             ),
         )
@@ -752,8 +881,10 @@ def default_global_options() -> dict[str, Any]:
         CONF_COMFORT_TEMP_MAX: DEFAULT_COMFORT_TEMP_MAX,
         CONF_COMFORT_RH_MIN: DEFAULT_COMFORT_RH_MIN,
         CONF_COMFORT_RH_MAX: DEFAULT_COMFORT_RH_MAX,
-        CONF_COMFORT_CO2_MIN: DEFAULT_COMFORT_CO2_MIN,
         CONF_COMFORT_CO2_MAX: DEFAULT_COMFORT_CO2_MAX,
+        CONF_CO2_TARGET: DEFAULT_CO2_TARGET,
+        CONF_MIN_AIRING_MINUTES: DEFAULT_MIN_AIRING_MINUTES,
+        CONF_MAX_EXTRA_AIRING_MINUTES: DEFAULT_MAX_EXTRA_AIRING_MINUTES,
         CONF_PRIORITY: Priority.TEMPERATURE.value,
     }
 

@@ -27,14 +27,16 @@ from . import (
     device_coordinators_for_entry,
 )
 from .const import (
+    CONF_CO2_TARGET,
     CONF_COMFORT_CO2_MAX,
-    CONF_COMFORT_CO2_MIN,
     CONF_COMFORT_RH_MAX,
     CONF_COMFORT_RH_MIN,
     CONF_COMFORT_TEMP_MAX,
     CONF_COMFORT_TEMP_MIN,
     CONF_GLOBAL,
     CONF_KIND,
+    CONF_MAX_EXTRA_AIRING_MINUTES,
+    CONF_MIN_AIRING_MINUTES,
     DOMAIN,
 )
 
@@ -88,16 +90,6 @@ NUMBER_DESCRIPTIONS = (
         mode=NumberMode.BOX,
     ),
     VentilationNumberEntityDescription(
-        key="comfort_co2_min",
-        translation_key="comfort_co2_min",
-        option_key=CONF_COMFORT_CO2_MIN,
-        native_min_value=1,
-        native_max_value=10000,
-        native_step=1,
-        native_unit_of_measurement="ppm",
-        mode=NumberMode.BOX,
-    ),
-    VentilationNumberEntityDescription(
         key="comfort_co2_max",
         translation_key="comfort_co2_max",
         option_key=CONF_COMFORT_CO2_MAX,
@@ -105,6 +97,36 @@ NUMBER_DESCRIPTIONS = (
         native_max_value=10000,
         native_step=1,
         native_unit_of_measurement="ppm",
+        mode=NumberMode.BOX,
+    ),
+    VentilationNumberEntityDescription(
+        key="co2_target",
+        translation_key="co2_target",
+        option_key=CONF_CO2_TARGET,
+        native_min_value=1,
+        native_max_value=10000,
+        native_step=1,
+        native_unit_of_measurement="ppm",
+        mode=NumberMode.BOX,
+    ),
+    VentilationNumberEntityDescription(
+        key="min_airing_minutes",
+        translation_key="min_airing_minutes",
+        option_key=CONF_MIN_AIRING_MINUTES,
+        native_min_value=0,
+        native_max_value=60,
+        native_step=1,
+        native_unit_of_measurement="min",
+        mode=NumberMode.BOX,
+    ),
+    VentilationNumberEntityDescription(
+        key="max_extra_airing_minutes",
+        translation_key="max_extra_airing_minutes",
+        option_key=CONF_MAX_EXTRA_AIRING_MINUTES,
+        native_min_value=0,
+        native_max_value=60,
+        native_step=1,
+        native_unit_of_measurement="min",
         mode=NumberMode.BOX,
     ),
 )
@@ -181,23 +203,15 @@ class VentilationNumber(NumberEntity):
             CONF_COMFORT_TEMP_MAX: settings.temp_max,
             CONF_COMFORT_RH_MIN: settings.rh_min,
             CONF_COMFORT_RH_MAX: settings.rh_max,
-            CONF_COMFORT_CO2_MIN: settings.co2_min,
             CONF_COMFORT_CO2_MAX: settings.co2_max,
+            CONF_CO2_TARGET: settings.co2_target,
+            CONF_MIN_AIRING_MINUTES: settings.min_airing_minutes,
+            CONF_MAX_EXTRA_AIRING_MINUTES: settings.max_extra_airing_minutes,
         }
         return values[self.entity_description.option_key]
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the configured value."""
-
-        settings = self.coordinator.comfort_settings
-        if (
-            self.entity_description.option_key == CONF_COMFORT_CO2_MIN
-            and value >= settings.co2_max
-        ) or (
-            self.entity_description.option_key == CONF_COMFORT_CO2_MAX
-            and value <= settings.co2_min
-        ):
-            raise ValueError("CO2 comfort minimum must be less than maximum")
 
         options: dict[str, Any] = dict(self._entry.options)
         if self._entry.data.get(CONF_KIND) == CONF_GLOBAL:

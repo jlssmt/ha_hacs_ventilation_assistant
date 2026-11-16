@@ -7,6 +7,7 @@ import unittest
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
+from unittest.mock import patch
 
 ROOT = Path(__file__).parents[1]
 if str(ROOT) not in sys.path:
@@ -55,6 +56,7 @@ def _install_homeassistant_stubs() -> None:
     event.__dict__["async_track_state_change_event"] = lambda *args, **kwargs: (
         lambda: None
     )
+    event.__dict__["async_track_time_interval"] = lambda *args, **kwargs: lambda: None
     ha_typing = types.ModuleType("homeassistant.helpers.typing")
     ha_typing.__dict__["StateType"] = Any
     entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
@@ -175,6 +177,181 @@ def _global_outdoor_coordinator(integration: Any, const: Any, hass: Any) -> Any:
 
 
 class GlobalOutdoorTests(unittest.TestCase):
+    def _airing_room(self, co2: str = "1250") -> tuple[Any, Any, dict[str, Any]]:
+        integration, _ = _load_integration_modules()
+        const = _const_module()
+        states = {
+            "sensor.co2": _State(co2, "ppm"),
+            "binary_sensor.window": _State("on"),
+        }
+        hass = types.SimpleNamespace(data={const.DOMAIN: {}}, states=_States(states))
+        coordinator = integration.VentilationCoordinator(
+            hass,
+            integration.VentilationDeviceConfig(
+                id="room",
+                name="Room",
+                options={
+                    const.CONF_INDOOR_CO2_ENTITIES: ["sensor.co2"],
+                    const.CONF_DOOR_WINDOW_ENTITIES: ["binary_sensor.window"],
+                },
+            ),
+        )
+        return integration, coordinator, states
+
+    def _replay(
+        self, curve: Any, seconds: int, tick: int = 15
+    ) -> tuple[list[tuple[int, bool | None]], Any, dict[str, Any], list[Any]]:
+        """Replay a CO2 curve (seconds -> ppm) on a ticking timer."""
+
+        integration, coordinator, states = self._airing_room()
+        clock = [1000.0]
+        timers: list[Any] = []
+
+        def track(_hass: Any, action: Any, _interval: Any) -> Any:
+            timers.append(action)
+            return timers.clear
+
+        results: list[tuple[int, bool | None]] = []
+        with (
+            patch.object(integration.time, "monotonic", lambda: clock[0]),
+            patch.object(integration, "async_track_time_interval", track),
+        ):
+            states["sensor.co2"] = _State(str(round(curve(0))), "ppm")
+            coordinator._async_input_changed(types.SimpleNamespace(data={}))
+            for elapsed in range(tick, seconds + 1, tick):
+                clock[0] += tick
+                states["sensor.co2"] = _State(str(round(curve(elapsed))), "ppm")
+                timers[0](None)
+                results.append((elapsed, coordinator.snapshot().ventilated_enough))
+            return results, coordinator, states, timers
+
+    def test_airing_signals_enough_once_the_curve_stalls_near_the_target(self) -> None:
+        def curve(t: int) -> float:
+            # falls 100 ppm/min to 650 ppm after 6 minutes, then stays there
+            return max(650.0, 1250.0 - 100.0 * t / 60)
+
+        results, _, _, _ = self._replay(curve, 600)
+        by_time = dict(results)
+
+        self.assertTrue(all(by_time[t] is False for t in range(15, 421, 15)))
+        self.assertTrue(all(by_time[t] is True for t in range(510, 601, 15)))
+
+    def test_airing_stops_being_enough_when_co2_climbs_again(self) -> None:
+        def curve(t: int) -> float:
+            if t < 360:
+                return 1250.0 - 100.0 * t / 60
+            if t < 540:
+                return 650.0
+            return 650.0 + 20.0 * (t - 540) / 60  # more people arrive
+
+        results, _, _, _ = self._replay(curve, 780)
+        by_time = dict(results)
+
+        self.assertIs(by_time[525], True)
+        self.assertIs(by_time[780], False)
+
+    def test_airing_stays_off_until_the_target_and_then_on_without_flapping(
+        self,
+    ) -> None:
+        def curve(t: int) -> float:
+            # falls 30 ppm/min and reaches the 600 ppm target after 400 s
+            return 800.0 - 30.0 * t / 60
+
+        results, _, _, _ = self._replay(curve, 700)
+        values = [value for _, value in results]
+        first_on = values.index(True)
+
+        self.assertGreater(results[first_on][0], 400)
+        self.assertTrue(all(value is False for value in values[:first_on]))
+        self.assertTrue(all(value is True for value in values[first_on:]))
+
+    def test_an_unchanged_sensor_value_still_counts_as_a_flat_curve(self) -> None:
+        # No state change events arrive, only the timer: the held value is the trend.
+        results, _, _, _ = self._replay(lambda _t: 650.0, 600)
+        by_time = dict(results)
+
+        self.assertIs(by_time[240], False)  # minimum airing time (5 min) not over
+        self.assertIs(by_time[330], True)
+
+    def test_closing_the_window_stops_the_timer_and_the_signal(self) -> None:
+        results, coordinator, states, timers = self._replay(lambda _t: 650.0, 600)
+        self.assertIs(results[-1][1], True)
+        self.assertEqual(len(timers), 1)
+
+        states["binary_sensor.window"] = _State("off")
+        coordinator._async_input_changed(types.SimpleNamespace(data={}))
+
+        self.assertEqual(timers, [])
+        self.assertIs(coordinator.snapshot().ventilated_enough, False)
+
+    def _humidity_room(self, *, with_window: bool) -> tuple[Any, Any, dict[str, Any]]:
+        """A room with temperature and humidity only: no CO2 sensor."""
+
+        integration, _ = _load_integration_modules()
+        const = _const_module()
+        states = {
+            "sensor.temp": _State("21", "\u00b0C"),
+            "sensor.rh": _State("70", "%"),
+            "sensor.outdoor_temp": _State("5", "\u00b0C"),
+            "sensor.outdoor_rh": _State("80", "%"),
+            "binary_sensor.window": _State("on"),
+        }
+        options: dict[str, Any] = {
+            const.CONF_INDOOR_TEMP_ENTITIES: ["sensor.temp"],
+            const.CONF_INDOOR_HUMIDITY_ENTITIES: ["sensor.rh"],
+            const.CONF_OUTDOOR_TEMP_ENTITIES: ["sensor.outdoor_temp"],
+            const.CONF_OUTDOOR_HUMIDITY_ENTITIES: ["sensor.outdoor_rh"],
+        }
+        if with_window:
+            options[const.CONF_DOOR_WINDOW_ENTITIES] = ["binary_sensor.window"]
+        hass = types.SimpleNamespace(data={const.DOMAIN: {}}, states=_States(states))
+        coordinator = integration.VentilationCoordinator(
+            hass,
+            integration.VentilationDeviceConfig(
+                id="room", name="Room", options=options
+            ),
+        )
+        return integration, coordinator, states
+
+    def test_a_room_without_co2_sensor_reports_enough_from_humidity(self) -> None:
+        integration, coordinator, states = self._humidity_room(with_window=True)
+        clock = [1000.0]
+        timers: list[Any] = []
+
+        def track(_hass: Any, action: Any, _interval: Any) -> Any:
+            timers.append(action)
+            return timers.clear
+
+        event = types.SimpleNamespace(data={})
+        seen: dict[int, bool | None] = {}
+        with (
+            patch.object(integration.time, "monotonic", lambda: clock[0]),
+            patch.object(integration, "async_track_time_interval", track),
+        ):
+            coordinator._async_input_changed(event)  # the window opens
+            for elapsed in range(15, 601, 15):
+                clock[0] = 1000.0 + elapsed
+                # humidity falls from 70 % to 50 % within the first 5 minutes
+                humidity = max(50.0, 70.0 - 20.0 * elapsed / 300)
+                states["sensor.rh"] = _State(f"{humidity:.1f}", "%")
+                coordinator._async_input_changed(event)
+                timers[0](None)
+                seen[elapsed] = coordinator.snapshot().ventilated_enough
+
+        self.assertIsNotNone(coordinator.snapshot().indoor_rh)
+        self.assertIsNone(coordinator.snapshot().indoor_co2)
+        self.assertTrue(all(seen[t] is False for t in range(15, 301, 15)))
+        self.assertIs(seen[345], True)
+        self.assertTrue(all(seen[t] is True for t in range(345, 601, 15)))
+
+    def test_a_room_without_a_window_contact_stays_unknown(self) -> None:
+        _integration, coordinator, _ = self._humidity_room(with_window=False)
+
+        snapshot = coordinator.snapshot()
+
+        self.assertIsNone(snapshot.any_open)
+        self.assertIsNone(snapshot.ventilated_enough)
+
     def test_global_coordinator_does_not_subscribe_to_itself(self) -> None:
         integration, _ = _load_integration_modules()
         const = _const_module()

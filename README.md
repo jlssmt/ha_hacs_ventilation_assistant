@@ -34,11 +34,24 @@ Each ventilation device creates a Home Assistant device containing:
 - Doors/Windows:
     - Any doors/windows open
     - Door/window open percentage
+- Ventilated enough: on while a window is open and more ventilation would no longer help
 - Advice:
     - Temperature advice: `KEEP_CLOSED`, `OPEN`, `KEEP_OPEN`, or `CLOSE`
     - Humidity advice: `KEEP_CLOSED`, `OPEN`, `KEEP_OPEN`, or `CLOSE`
     - Carbon dioxide advice: `KEEP_CLOSED`, `OPEN`, `KEEP_OPEN`, or `CLOSE`
     - Advice: `KEEP_CLOSED`, `OPEN`, `KEEP_OPEN`, or `CLOSE`
+
+## Ventilated enough
+
+The `Ventilated enough` binary sensor turns on while a door/window is open and airing no longer improves the room. Use it to announce "close the window" instead of reacting to the advice, which flips as soon as a comfort limit is crossed.
+
+- Nothing counts as done before the window was open for the minimum airing time (default 5 minutes, because sensors lag behind the airing). Configure it globally, override it per device, or change it with the `Minimum airing time` number entity.
+- Carbon dioxide counts as done at the CO2 target (default 600 ppm). Above it, airing keeps going while the value still falls at a clear rate (more than 20 ppm per minute) or climbs again (more than 10 ppm per minute). A value that falls slower, or stands still, is only worth waiting for if the target is reached within the maximum extra airing time (default 2 minutes). Otherwise, however far above the target, it is better to close the window and air again later.
+- Humidity counts as done when it is within the comfort band, when outdoor air cannot improve it, or when its trend towards the comfort maximum is slow and would need longer than the maximum extra airing time.
+- The trend is the slope of a line through the last two minutes of indoor values, sampled every 15 seconds. The last value is held while a sensor reports nothing new. The sensor turns on after two consecutive checks. Once on it stays on, however the curve moves, until the value climbs again or the window closes.
+- Target, minimum airing time and maximum extra airing time are global settings with a per-device override and a number entity each.
+- It is on when every available component is done. A room with only one of the two inputs uses that one.
+- It never turns on when the outdoor temperature is at or above the comfort temperature minimum, because windows are open for long periods then.
 
 ## Availability
 
